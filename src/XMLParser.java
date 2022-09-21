@@ -20,7 +20,7 @@ public class XMLParser {
 
     private final Document document;
 
-    private static long writtenLinks;
+    private long writtenLinks;
 
     public XMLParser(URL xmlSource) throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
