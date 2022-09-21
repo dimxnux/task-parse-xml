@@ -34,7 +34,6 @@ public class XMLParser {
         return connection.getInputStream();
     }
 
-
     private void writeLocations(Node node, Writer writer) throws IOException {
         NodeList nodeList = node.getChildNodes();
 
@@ -61,7 +60,7 @@ public class XMLParser {
         writtenLinks = 0;
         Element rootElement = document.getDocumentElement();
 
-        prepareDestDir(destinationDir.toFile());
+        prepareDestDir();
         Path writePath = Path.of(destinationDir.toString(), File.separator, destination.toString());
 
         try (BufferedWriter writer =
@@ -70,7 +69,7 @@ public class XMLParser {
         }
     }
 
-    public void prepareDestDir(File destination) throws IOException {
+    public void prepareDestDir() throws IOException {
         if (!Files.exists(destinationDir)) {
             Files.createDirectory(destinationDir);
             return;
