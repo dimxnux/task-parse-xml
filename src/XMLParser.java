@@ -19,13 +19,32 @@ public class XMLParser {
     private final Path destinationDir = Path.of("links");
 
     private final Document document;
+    private long writtenLines;
+    private int writtenFiles;
+    private boolean hasLinesThreshold;
+    private long linesThreshold;
+    private String destinationFile;
+    private Writer writer;
 
-    private long writtenLinks;
 
     public XMLParser(URL xmlSource) throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
         document = builder.parse(getURLInputStream(xmlSource));
+
+        InputStream is = getURLInputStream(new URL(""));
+
+        hasLinesThreshold = false;
+    }
+
+    public void setLinesThreshold(long linesThreshold) {
+        hasLinesThreshold = true;
+        this.linesThreshold = Math.max(1, linesThreshold);
+    }
+
+    public void disableLinesThreshold() {
+        hasLinesThreshold = false;
+        linesThreshold = 0;
     }
 
     private InputStream getURLInputStream(URL url) throws IOException {
@@ -34,7 +53,14 @@ public class XMLParser {
         return connection.getInputStream();
     }
 
-    private void writeLocations(Node node, Writer writer) throws IOException {
+    private void writeLocations(Node node) throws IOException {
+        if (hasLinesThreshold && (writtenLines == linesThreshold)) {
+            // prepare the next Writer for the next file
+            writer.close();
+            ++writtenFiles;
+            writtenLines = 0;
+        }
+
         NodeList nodeList = node.getChildNodes();
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -45,28 +71,51 @@ public class XMLParser {
 
                 if (LOCATION.equals(parent.getNodeName())) {
                     String link = currentNode.getNodeValue();
+                    if (writtenLines == 0) {
+                        writer = getNextWriter();
+                    }
                     writer.append(link).append('\n');
-                    ++writtenLinks;
+                    ++writtenLines;
                 }
             }
 
             if (currentNode.getNodeType() == Node.ELEMENT_NODE) {
-                writeLocations(currentNode, writer);
+                writeLocations(currentNode);
             }
         }
     }
 
+    private Writer getNextWriter() throws IOException {
+        String extension = "";
+        String filename;
+
+        int extensionStartIndex = destinationFile.indexOf('.');
+        if (extensionStartIndex != -1) {
+            extension = destinationFile.substring(extensionStartIndex);
+            filename = destinationFile.substring(0, extensionStartIndex);
+        } else {
+            filename = destinationFile;
+        }
+
+        filename = filename + "-" + (writtenFiles + 1) + extension;
+        Path writePath = Path.of(destinationDir.toString(), File.separator, filename);
+
+        return new BufferedWriter(new FileWriter(writePath.toFile()));
+    }
+
+
     public void writeLocationsToFile(File destination) throws IOException {
-        writtenLinks = 0;
+        destinationFile = destination.toString();
+        writtenLines = 0;
+        writtenFiles = 0;
         Element rootElement = document.getDocumentElement();
 
         prepareDestDir();
-        Path writePath = Path.of(destinationDir.toString(), File.separator, destination.toString());
 
-        try (BufferedWriter writer =
-                     new BufferedWriter(new FileWriter(writePath.toFile()))) {
-            writeLocations(rootElement, writer);
-        }
+        writer = getNextWriter();
+        writeLocations(rootElement);
+
+        writer.close();
     }
 
     public void prepareDestDir() throws IOException {

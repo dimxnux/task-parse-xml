@@ -10,6 +10,7 @@ public class Main {
             XMLParser xmlParser = new XMLParser(new URL(XML_URL));
             File linksDest = new File("links.txt");
 
+            xmlParser.setLinesThreshold(8);
             xmlParser.writeLocationsToFile(linksDest);
         } catch (Exception e) {
             e.printStackTrace();
