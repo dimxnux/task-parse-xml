@@ -1,4 +1,3 @@
-import java.io.File;
 import java.net.URL;
 
 public class Main {
@@ -7,11 +6,14 @@ public class Main {
 
     public static void main(String[] args) {
         try {
-            XMLParser xmlParser = new XMLParser(new URL(XML_URL));
-            File linksDest = new File("links.txt");
+//            XMLParserSingleFile xmlParser = new XMLParserSingleFile(new URL(XML_URL));
+//            String linksDest = "links.txt";
+//
+//            xmlParser.writeLocationsToFile(linksDest);
 
-            xmlParser.setLinesThreshold(8);
-            xmlParser.writeLocationsToFile(linksDest);
+            XMLParserFileSplitter xmlParser = new XMLParserFileSplitter(new URL(XML_URL));
+            String linksDest = "links.txt";
+            xmlParser.writeLocationsToFile(linksDest, 5);
         } catch (Exception e) {
             e.printStackTrace();
         }
