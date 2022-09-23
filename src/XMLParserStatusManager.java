@@ -9,25 +9,20 @@ public class XMLParserStatusManager {
 
     private static XMLParserStatus parserStatus;
 
-    public static void initializeStatus() throws IOException {
-        parserStatus = new XMLParserStatus();
-        serializeStatus(parserStatus);
-    }
-
     public static void initializeStatus(String filename, long linesThreshold) throws IOException {
         parserStatus = new XMLParserStatus(filename, linesThreshold);
-        serializeStatus(parserStatus);
+        serializeStatus();
     }
 
     public static void disposeStatus() throws IOException {
         Files.delete(Path.of(STATUS_FILE));
     }
 
-    public static boolean isInProgress() throws IOException {
+    public static boolean isInProgress() {
         return Files.exists(Path.of(STATUS_FILE));
     }
 
-    public static void serializeStatus(XMLParserStatus parserStatus) throws IOException {
+    public static void serializeStatus() throws IOException {
         try (ObjectOutputStream out =
                      new ObjectOutputStream(new FileOutputStream(STATUS_FILE))) {
             out.writeObject(parserStatus);

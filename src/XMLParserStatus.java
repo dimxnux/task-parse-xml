@@ -7,9 +7,6 @@ public class XMLParserStatus implements Serializable {
     private String filename;
     private long linesThreshold;
 
-
-    public XMLParserStatus() {}
-
     public XMLParserStatus(String filename, long linesThreshold) {
         this.filename = filename;
         this.linesThreshold = linesThreshold;

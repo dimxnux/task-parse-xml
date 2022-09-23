@@ -6,14 +6,9 @@ public class Main {
 
     public static void main(String[] args) {
         try {
-//            XMLParserSingleFile xmlParser = new XMLParserSingleFile(new URL(XML_URL));
-//            String linksDest = "links.txt";
-//
-//            xmlParser.writeLocationsToFile(linksDest);
-
-            XMLParserFileSplitter xmlParser = new XMLParserFileSplitter(new URL(XML_URL));
+            XMLParser xmlParser = new XMLParser(new URL(XML_URL));
             String linksDest = "links.txt";
-            xmlParser.writeLocationsToFile(linksDest, 5);
+            xmlParser.writeLinksToFile(linksDest, 5);
         } catch (Exception e) {
             e.printStackTrace();
         }
