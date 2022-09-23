@@ -64,33 +64,31 @@ public class XMLParser {
     private void writeTextNodeToFile(String destinationFilename, long linesThreshold, String parentTag)
             throws IOException, ClassNotFoundException {
 
-        XMLParserStatus st;
+        XMLParserStatus parserStatus = XMLParserStatusManager.deserializeStatus();
 
-        if (XMLParserStatusManager.isInProgress()) {
-            XMLParserStatus parserStatus = XMLParserStatusManager.deserializeStatus();
-            // if the same filename as from the previous session, then resume the previous session
-            if (destinationFilename.equals(parserStatus.getFilename())) {
-                // Ignore the given argument for destinationFilename, while resuming a previous session
-                this.destinationFilename = parserStatus.getFilename();
+        if (XMLParserStatusManager.isInProgress()
+                && (parserStatus != null)
+                // if the same filename as from the previous session, then resume the previous session
+                && destinationFilename.equals(parserStatus.getFilename())) {
 
-                // Ignore the given argument for linesThreshold, while resuming a previous session
-                long previousLinesThreshold = parserStatus.getLinesThreshold();
-                linesToSkip = getPreviousSessionWrittenLines();
-                writtenLines = linesToSkip % previousLinesThreshold;
-                writtenFiles = linesToSkip / previousLinesThreshold;
-                this.linesThreshold = previousLinesThreshold;
-
+            // Ignore the given argument for linesThreshold, while resuming a previous session
+            long previousLinesThreshold = parserStatus.getLinesThreshold();
+            linesToSkip = getPreviousSessionWrittenLines();
+            if (previousLinesThreshold == 0) {
+                writtenLines = 0;
+                writtenFiles = 0;
             }
+            this.linesThreshold = previousLinesThreshold;
         } else {
             XMLParserStatusManager.initializeStatus(destinationFilename, linesThreshold);
             prepareDestinationDir();
 
-            this.destinationFilename = destinationFilename;
             linesToSkip = 0;
             writtenLines = 0;
             writtenFiles = 0;
             this.linesThreshold = linesThreshold;
         }
+        this.destinationFilename = destinationFilename;
 
         Element rootElement = document.getDocumentElement();
         writeTextNodes(rootElement, parentTag);
@@ -181,7 +179,8 @@ public class XMLParser {
             filename = destinationFilename;
         }
 
-        filename = filename + "-" + (writtenFiles + 1) + extension;
+        String fileNumber = (linesThreshold == 0) ? "" : "-" + (writtenFiles + 1);
+        filename = filename + fileNumber + extension;
         Path outFile = DESTINATION_DIR.resolve(Path.of(filename));
 
         return new BufferedWriter(new FileWriter(outFile.toFile(), true));

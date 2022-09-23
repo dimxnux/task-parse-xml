@@ -30,6 +30,9 @@ public class XMLParserStatusManager {
     }
 
     public static XMLParserStatus deserializeStatus() throws IOException, ClassNotFoundException {
+        if (!Files.exists(Path.of(STATUS_FILE))) {
+            return null;
+        }
         try (ObjectInputStream in =
                      new ObjectInputStream(new FileInputStream(STATUS_FILE))) {
             return (XMLParserStatus) in.readObject();
