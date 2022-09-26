@@ -8,7 +8,7 @@ public class Main {
         try {
             XMLParser xmlParser = new XMLParser(new URL(XML_URL));
             String linksDest = "links.txt";
-            xmlParser.writeLinksToFile(linksDest, 4);
+            xmlParser.writeLinksToFile(linksDest);
         } catch (Exception e) {
             e.printStackTrace();
         }

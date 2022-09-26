@@ -61,16 +61,15 @@ public class XMLParser {
         writeTextNodeToFile(destinationFilename, linesThreshold, LOCATION_TAG);
     }
 
-    void configureForPreviousSession(String destinationFilename, XMLParserStatus parserStatus) throws IOException, ClassNotFoundException {
+    void configureForPreviousSession(String destinationFilename, XMLParserStatus parserStatus) throws IOException {
         long previousLinesThreshold = parserStatus.getLinesThreshold();
         linesToSkip = getPreviousSessionWrittenLines();
         if (previousLinesThreshold == 0) {
-            writtenLines = 0;
+            writtenLines = linesToSkip;
             writtenFiles = 0;
         } else {
-            long previousSessionWrittenLines = getPreviousSessionWrittenLines();
-            writtenLines = previousSessionWrittenLines % previousLinesThreshold;
-            writtenFiles = previousSessionWrittenLines / previousLinesThreshold;
+            writtenLines = linesToSkip % previousLinesThreshold;
+            writtenFiles = linesToSkip / previousLinesThreshold;
         }
         this.linesThreshold = previousLinesThreshold;
         this.destinationFilename = destinationFilename;
@@ -141,9 +140,15 @@ public class XMLParser {
                     String link = currentNode.getNodeValue();
                     writer.append(link).append('\n');
                     ++writtenLines;
-                    // for testing:
+                    // test resuming the program that had lines threshold:
 //                    writer.flush();
 //                    if (writtenFiles == 3 && writtenLines == 2) {
+//                        throw new RuntimeException();
+//                    }
+
+                    // test resuming the program that didn't have lines threshold:
+//                    writer.flush();
+//                    if (writtenLines == 5) {
 //                        throw new RuntimeException();
 //                    }
                 }
