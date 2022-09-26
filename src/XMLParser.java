@@ -61,6 +61,32 @@ public class XMLParser {
         writeTextNodeToFile(destinationFilename, linesThreshold, LOCATION_TAG);
     }
 
+    void configureForPreviousSession(String destinationFilename, XMLParserStatus parserStatus) throws IOException, ClassNotFoundException {
+        long previousLinesThreshold = parserStatus.getLinesThreshold();
+        linesToSkip = getPreviousSessionWrittenLines();
+        if (previousLinesThreshold == 0) {
+            writtenLines = 0;
+            writtenFiles = 0;
+        } else {
+            long previousSessionWrittenLines = getPreviousSessionWrittenLines();
+            writtenLines = previousSessionWrittenLines % previousLinesThreshold;
+            writtenFiles = previousSessionWrittenLines / previousLinesThreshold;
+        }
+        this.linesThreshold = previousLinesThreshold;
+        this.destinationFilename = destinationFilename;
+    }
+
+    void configureForNewSession(String destinationFilename, long linesThreshold) throws IOException {
+        XMLParserStatusManager.initializeStatus(destinationFilename, linesThreshold);
+        prepareDestinationDir();
+
+        linesToSkip = 0;
+        writtenLines = 0;
+        writtenFiles = 0;
+        this.linesThreshold = linesThreshold;
+        this.destinationFilename = destinationFilename;
+    }
+
     private void writeTextNodeToFile(String destinationFilename, long linesThreshold, String parentTag)
             throws IOException, ClassNotFoundException {
 
@@ -71,24 +97,10 @@ public class XMLParser {
                 // if the same filename as from the previous session, then resume the previous session
                 && destinationFilename.equals(parserStatus.getFilename())) {
 
-            // Ignore the given argument for linesThreshold, while resuming a previous session
-            long previousLinesThreshold = parserStatus.getLinesThreshold();
-            linesToSkip = getPreviousSessionWrittenLines();
-            if (previousLinesThreshold == 0) {
-                writtenLines = 0;
-                writtenFiles = 0;
-            }
-            this.linesThreshold = previousLinesThreshold;
+            configureForPreviousSession(destinationFilename, parserStatus);
         } else {
-            XMLParserStatusManager.initializeStatus(destinationFilename, linesThreshold);
-            prepareDestinationDir();
-
-            linesToSkip = 0;
-            writtenLines = 0;
-            writtenFiles = 0;
-            this.linesThreshold = linesThreshold;
+            configureForNewSession(destinationFilename, linesThreshold);
         }
-        this.destinationFilename = destinationFilename;
 
         Element rootElement = document.getDocumentElement();
         writeTextNodes(rootElement, parentTag);
@@ -120,13 +132,20 @@ public class XMLParser {
                         --linesToSkip;
                         continue;
                     }
-                    if (writtenLines == 0) {
+                    if (writtenLines == 0 // when a new file gets created
+                            // writer is null when it skips multiple files and non-zero lines
+                            || writer == null) {
                         writer = getNextWriter();
                     }
 
                     String link = currentNode.getNodeValue();
                     writer.append(link).append('\n');
                     ++writtenLines;
+                    // for testing:
+//                    writer.flush();
+//                    if (writtenFiles == 3 && writtenLines == 2) {
+//                        throw new RuntimeException();
+//                    }
                 }
             }
 
