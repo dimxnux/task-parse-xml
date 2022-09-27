@@ -20,12 +20,12 @@ public class XMLParser {
     private static final Path DESTINATION_DIR = Path.of("links");
 
     private final Document document;
-    private String destinationFilename;
-    private long writtenLines;
-    private long writtenFiles;
-    private long linesToSkip;
-    private long linesThreshold;
-    private Writer writer;
+    private static String destinationFilename;
+    private static long writtenLines;
+    private static long writtenFiles;
+    private static long linesToSkip;
+    private static long linesThreshold;
+    private static Writer writer;
 
     public XMLParser(URL xmlSource) throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -43,8 +43,12 @@ public class XMLParser {
      * Write all links from the XML document to a single file.
      * */
     public void writeLinksToFile(String destinationFilename)
-            throws IOException, ClassNotFoundException {
-        writeTextNodeToFile(destinationFilename, 0, LOCATION_TAG);
+            throws IOException, ClassNotFoundException, ParserConfigurationException, SAXException {
+
+        configureBeforeParse(destinationFilename, 0);
+        writeTextNodeToFile(LOCATION_TAG);
+
+        cleanupAfterParse();
     }
 
     /**
@@ -52,13 +56,36 @@ public class XMLParser {
      * @param linesThreshold max number of lines a file can contain
      * */
     public void writeLinksToFile(String destinationFilename, long linesThreshold)
-            throws IOException, ClassNotFoundException {
+            throws IOException, ClassNotFoundException, ParserConfigurationException, SAXException {
         if (linesThreshold <= 0) {
             throw new IllegalArgumentException("Lines threshold must be greater than 0." +
                     " Provided linesThreshold: " + linesThreshold);
         }
 
-        writeTextNodeToFile(destinationFilename, linesThreshold, LOCATION_TAG);
+        configureBeforeParse(destinationFilename, linesThreshold);
+        writeTextNodeToFile(LOCATION_TAG);
+
+        cleanupAfterParse();
+    }
+
+    private void configureBeforeParse(String destinationFilename, long linesThreshold)
+            throws IOException, ClassNotFoundException {
+        XMLParserStatus parserStatus = XMLParserStatusManager.deserializeStatus();
+
+        if (XMLParserStatusManager.isInProgress()
+                && (parserStatus != null)
+                // if the same filename as from the previous session, then resume the previous session
+                && destinationFilename.equals(parserStatus.getFilename())) {
+
+            configureForPreviousSession(destinationFilename, parserStatus);
+        } else {
+            configureForNewSession(destinationFilename, linesThreshold);
+        }
+    }
+
+    private void cleanupAfterParse() throws IOException {
+        writer.close();
+        XMLParserStatusManager.disposeStatus();
     }
 
     void configureForPreviousSession(String destinationFilename, XMLParserStatus parserStatus) throws IOException {
@@ -71,8 +98,8 @@ public class XMLParser {
             writtenLines = linesToSkip % previousLinesThreshold;
             writtenFiles = linesToSkip / previousLinesThreshold;
         }
-        this.linesThreshold = previousLinesThreshold;
-        this.destinationFilename = destinationFilename;
+        linesThreshold = previousLinesThreshold;
+        XMLParser.destinationFilename = destinationFilename;
     }
 
     void configureForNewSession(String destinationFilename, long linesThreshold) throws IOException {
@@ -82,33 +109,19 @@ public class XMLParser {
         linesToSkip = 0;
         writtenLines = 0;
         writtenFiles = 0;
-        this.linesThreshold = linesThreshold;
-        this.destinationFilename = destinationFilename;
+        XMLParser.linesThreshold = linesThreshold;
+        XMLParser.destinationFilename = destinationFilename;
     }
 
-    private void writeTextNodeToFile(String destinationFilename, long linesThreshold, String parentTag)
-            throws IOException, ClassNotFoundException {
-
-        XMLParserStatus parserStatus = XMLParserStatusManager.deserializeStatus();
-
-        if (XMLParserStatusManager.isInProgress()
-                && (parserStatus != null)
-                // if the same filename as from the previous session, then resume the previous session
-                && destinationFilename.equals(parserStatus.getFilename())) {
-
-            configureForPreviousSession(destinationFilename, parserStatus);
-        } else {
-            configureForNewSession(destinationFilename, linesThreshold);
-        }
+    private void writeTextNodeToFile(String parentTag)
+            throws IOException, ClassNotFoundException, ParserConfigurationException, SAXException {
 
         Element rootElement = document.getDocumentElement();
         writeTextNodes(rootElement, parentTag);
-
-        writer.close();
-        XMLParserStatusManager.disposeStatus();
     }
 
-    private void writeTextNodes(Node node, String parentTag) throws IOException {
+    private void writeTextNodes(Node node, String parentTag)
+            throws IOException, ParserConfigurationException, SAXException, ClassNotFoundException {
         if ((linesToSkip == 0) // no more lines to skip
                 && (linesThreshold != 0) // check if lines threshold is enabled
                 && (writtenLines == linesThreshold)) {
@@ -127,28 +140,41 @@ public class XMLParser {
                 Node parent = currentNode.getParentNode();
 
                 if (parentTag.equals(parent.getNodeName())) {
+
+                    // make another parser and parse the next xml document
+                    String link = currentNode.getNodeValue();
+                    if (link.endsWith(".xml")) {
+                        XMLParser anotherParser = new XMLParser(new URL(link));
+                        anotherParser.writeTextNodeToFile(LOCATION_TAG);
+                        continue;
+                    }
+
                     if (linesToSkip > 0) {
                         --linesToSkip;
                         continue;
                     }
+
                     if (writtenLines == 0 // when a new file gets created
                             // writer is null when it skips multiple files and non-zero lines
                             || writer == null) {
                         writer = getNextWriter();
                     }
 
-                    String link = currentNode.getNodeValue();
                     writer.append(link).append('\n');
+                    writer.flush();
                     ++writtenLines;
-                    // test resuming the program that had lines threshold:
+
+//                    Test resuming the program that had lines threshold:
+
 //                    writer.flush();
-//                    if (writtenFiles == 3 && writtenLines == 2) {
+//                    if (writtenFiles == 3 && writtenLines == 15000) {
 //                        throw new RuntimeException();
 //                    }
 
-                    // test resuming the program that didn't have lines threshold:
+//                    Test resuming the program that didn't have lines threshold:
+
 //                    writer.flush();
-//                    if (writtenLines == 5) {
+//                    if (writtenLines == 300_000) {
 //                        throw new RuntimeException();
 //                    }
                 }

@@ -4,8 +4,8 @@ public class XMLParserStatus implements Serializable {
 
     private static final long serialVersionUID = 1234567L;
 
-    private String filename;
-    private long linesThreshold;
+    private final String filename;
+    private final long linesThreshold;
 
     public XMLParserStatus(String filename, long linesThreshold) {
         this.filename = filename;
